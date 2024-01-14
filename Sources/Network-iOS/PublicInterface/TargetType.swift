@@ -21,13 +21,13 @@ public protocol TargetType: Moya.TargetType {
   var path: String { get }
   
   /// The HTTP method used in the request.
-  var testmethod: HTTPMethod { get }
+  var method: HTTPMethod { get }
   
   /// Provides stub data for use in testing. Default is `Data()`.
   var sampleData: Data { get }
   
   /// The type of HTTP task to be performed.
-  var testtask: Task { get }
+  var task: Task { get }
   
   /// The type of validation to perform on the request. Default is `.none`.
   var validationType: ValidationType { get }
@@ -45,7 +45,7 @@ public extension TargetType {
   var sampleData: Data { Data() }
   
   var method: Moya.Method {
-    switch self.testmethod {
+    switch self.method {
     case .connect:
       return .connect
     case .delete:
@@ -72,7 +72,7 @@ public extension TargetType {
   }
   
   var task: Moya.Task {
-    switch self.testtask {
+    switch self.task {
     case .requestPlain:
       return .requestPlain
     case .requestData(let data):

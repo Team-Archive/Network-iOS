@@ -25,14 +25,14 @@ extension SampleAPI: TargetType {
     }
   }
   
-  var testmethod: HTTPMethod {
+  var method: HTTPMethod {
     switch self {
     case .search:
       return .get
     }
   }
   
-  var testtask: Task {
+  var task: Task {
     switch self {
     case .search(let keyword, let offset, let limit):
       return .requestParameters(

@@ -1,6 +1,6 @@
 //
 //  NetworkProvider.swift
-//  
+//
 //
 //  Created by hanwe on 1/7/24.
 //
@@ -14,16 +14,15 @@ import Combine
 protocol Networkable {
   associatedtype Target
   @available(macOS 10.15, *)
-  func request(target: Target) -> AnyPublisher<Response, Error>
+  func request(target: Target) -> AnyPublisher<Data, Error>
 }
 
-final class NetworkProvider<Target: TargetType> {
+public final class NetworkProvider<Target: TargetType> {
   
   
   // MARK: - private properties
   
   private let isStub: Bool
-  private let providerType: ProviderType
   private let sampleStatusCode: Int
   
   // MARK: - properties
@@ -32,12 +31,6 @@ final class NetworkProvider<Target: TargetType> {
   let dispatchQueue = DispatchQueue(label: "queue.network.hw", qos: .default)
   
   let loggerPlugin = NetworkLoggerPlugin()
-  
-  enum ProviderType {
-    case specificCatch(successCodeRange: ClosedRange<Int>)
-    case customCatchError
-    case normal
-  }
   
   let customEndpointClosure = { (target: Target) -> Endpoint in
     return Endpoint(
@@ -51,9 +44,8 @@ final class NetworkProvider<Target: TargetType> {
   
   // MARK: - life cycle
   
-  init(isStub: Bool = false, sampleStatusCode: Int = 200, providerType: ProviderType = .normal) {
+  public init(isStub: Bool = false, sampleStatusCode: Int = 200) {
     self.isStub = isStub
-    self.providerType = providerType
     self.sampleStatusCode = sampleStatusCode
     
     if isStub {
@@ -79,8 +71,9 @@ final class NetworkProvider<Target: TargetType> {
 
 @available(macOS 10.15, *)
 extension NetworkProvider: Networkable {
-  func request(target: Target) -> AnyPublisher<Response, Error> {
+  public func request(target: Target) -> AnyPublisher<Data, Error> {
     return self.provider.requestPublisher(target)
+      .map { $0.data }
       .mapError { $0 as Error }
       .eraseToAnyPublisher()
   }
@@ -97,4 +90,5 @@ class AlamofireSession: Alamofire.Session {
     
     return Alamofire.Session(configuration: configuration)
   }()
+  
 }

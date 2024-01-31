@@ -38,8 +38,13 @@ class ViewModel: ObservableObject {
     let provider = NetworkProvider<SampleAPI>()
     return provider.request(target: .search(keyword: "game", offset: 1, limit: 10))
       .receive(on: DispatchQueue.main) // UI 업데이트는 메인 큐에서 수행
-      .map { data in
-        return String(data: data, encoding: .utf8) ?? "--"
+      .map { result in
+        switch result {
+        case .success(let data):
+          return String(data: data, encoding: .utf8) ?? "--"
+        case .failure(let err):
+          return "err: \(err.localizedDescription)"
+        }
       }
       .replaceError(with: "Error occurred") // 오류 발생 시 대체 값 지정
       .assign(to: \.responseText, on: self) // 값을 @State 속성에 할당

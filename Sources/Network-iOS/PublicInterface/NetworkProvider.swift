@@ -14,7 +14,7 @@ import Combine
 protocol Networkable {
   associatedtype Target
   @available(macOS 10.15, *)
-  func request(target: Target) -> AnyPublisher<Data, Error>
+  func request(target: Target) -> AnyPublisher<Result<Data, Error>, Never>
 }
 
 public final class NetworkProvider<Target: TargetType> {
@@ -71,12 +71,36 @@ public final class NetworkProvider<Target: TargetType> {
 
 @available(macOS 10.15, *)
 extension NetworkProvider: Networkable {
-  public func request(target: Target) -> AnyPublisher<Data, Error> {
+  
+  public func request(target: Target) -> AnyPublisher<Result<Data, Error>, Never> {
     return self.provider.requestPublisher(target)
-      .map { $0.data }
-      .mapError { $0 as Error }
+      .map { response -> Result<Data, Error> in
+        switch response.statusCode {
+        case 200...299:
+          return .success(response.data)
+        default:
+          return .failure(NSError(
+            domain: "server",
+            code: response.statusCode,
+            userInfo: [
+              NSLocalizedDescriptionKey: "Server Error"
+            ]
+          ))
+        }
+      }
+      .catch({ err -> AnyPublisher<Result<Data, Error>, Never> in
+        return Just(.failure(NSError(
+          domain: "network",
+          code: err.response?.statusCode ?? err.errorCode,
+          userInfo: [
+            NSLocalizedDescriptionKey: err.localizedDescription
+          ]
+        )))
+        .eraseToAnyPublisher()
+      })
       .eraseToAnyPublisher()
   }
+  
 }
 
 class AlamofireSession: Alamofire.Session {

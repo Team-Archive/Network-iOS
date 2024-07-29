@@ -15,6 +15,7 @@ protocol Networkable {
   associatedtype Target
   @available(macOS 10.15, *)
   func request(target: Target) -> AnyPublisher<Result<Data, Error>, Never>
+  func request(target: Target) async -> Result<Data, Error>
 }
 
 public final class NetworkProvider<Target: TargetType> {
@@ -71,6 +72,13 @@ public final class NetworkProvider<Target: TargetType> {
 
 @available(macOS 10.15, *)
 extension NetworkProvider: Networkable {
+  public func request(target: Target) async -> Result<Data, any Error> {
+    await withCheckedContinuation { continuation in
+      let cancellable = request(target: target).sink { result in
+        continuation.resume(returning: result)
+      }
+    }
+  }
   
   public func request(target: Target) -> AnyPublisher<Result<Data, Error>, Never> {
     return self.provider.requestPublisher(target)

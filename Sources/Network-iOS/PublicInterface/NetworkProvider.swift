@@ -20,7 +20,6 @@ protocol Networkable {
 
 public final class NetworkProvider<Target: TargetType> {
   
-  
   // MARK: - private properties
   
   private let isStub: Bool
@@ -72,10 +71,33 @@ public final class NetworkProvider<Target: TargetType> {
 
 @available(macOS 10.15, *)
 extension NetworkProvider: Networkable {
-  public func request(target: Target) async -> Result<Data, any Error> {
+  public func request(target: Target) async -> Result<Data, Error> {
     await withCheckedContinuation { continuation in
-      let cancellable = requestPublisher(target: target).sink { result in
-        continuation.resume(returning: result)
+      provider.request(target) { result in
+        switch result {
+        case .success(let response):
+          if 200...299 ~= response.statusCode {
+            continuation.resume(returning: .success(response.data))
+          } else {
+            let error = NSError(
+              domain: "server",
+              code: response.statusCode,
+              userInfo: [
+                NSLocalizedDescriptionKey: "Server Error"
+              ]
+            )
+            continuation.resume(returning: .failure(error))
+          }
+        case .failure(let error):
+          let nsError = NSError(
+            domain: "network",
+            code: error.response?.statusCode ?? error.errorCode,
+            userInfo: [
+              NSLocalizedDescriptionKey: error.localizedDescription
+            ]
+          )
+          continuation.resume(returning: .failure(nsError))
+        }
       }
     }
   }
@@ -96,7 +118,7 @@ extension NetworkProvider: Networkable {
           ))
         }
       }
-      .catch({ err -> AnyPublisher<Result<Data, Error>, Never> in
+      .catch { err -> AnyPublisher<Result<Data, Error>, Never> in
         return Just(.failure(NSError(
           domain: "network",
           code: err.response?.statusCode ?? err.errorCode,
@@ -105,10 +127,9 @@ extension NetworkProvider: Networkable {
           ]
         )))
         .eraseToAnyPublisher()
-      })
+      }
       .eraseToAnyPublisher()
   }
-  
 }
 
 class AlamofireSession: Alamofire.Session {
@@ -122,5 +143,4 @@ class AlamofireSession: Alamofire.Session {
     
     return Alamofire.Session(configuration: configuration)
   }()
-  
 }
